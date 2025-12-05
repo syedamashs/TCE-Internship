@@ -6,23 +6,24 @@ from io import BytesIO
 from PIL import Image
 import time
 
+# Creating the FastAPI app
 app = FastAPI(
     title="Indian Food Detection API",
     description="YOLOv11 food & vegetable detector (20 classes)",
     version="1.0.0"
 )
 
-# Load YOLO
+# Loading YOLO
 MODEL_PATH = "best.pt"
 model = YOLO(MODEL_PATH)
 CLASS_NAMES = model.names
 
-
+# Returning index.html
 @app.get("/")
 def root():
     return FileResponse("static/index.html")
 
-
+# Predict-JSON Route
 @app.post("/predict-json")
 async def predict_json(file: UploadFile = File(...)):
     start_time = time.time()  # Start inference timer
@@ -36,6 +37,7 @@ async def predict_json(file: UploadFile = File(...)):
     end_time = time.time()
     inference_time = round((end_time - start_time) * 1000, 2)  # in ms
 
+    # Count Objects
     class_count = {}
     total_objects = 0
 
@@ -48,6 +50,7 @@ async def predict_json(file: UploadFile = File(...)):
 
     unique_classes = list(class_count.keys())
 
+    # JSON Format
     return JSONResponse({
         "unique_classes": unique_classes,
         "counts": class_count,
@@ -56,6 +59,7 @@ async def predict_json(file: UploadFile = File(...)):
     })
 
 
+# Predict-Image Route
 @app.post("/predict-image")
 async def predict_image(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -73,6 +77,7 @@ async def predict_image(file: UploadFile = File(...)):
     return StreamingResponse(buf, media_type="image/jpeg")
 
 
+# Download-Predicted-Image Route
 @app.post("/download-predicted-image", summary="Download Predicted Image")
 async def download_predicted_image(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -86,5 +91,5 @@ async def download_predicted_image(file: UploadFile = File(...)):
 
     return FileResponse(output_path, media_type="image/jpeg", filename="prediction.jpg")
 
-
+# Mounting index.html to Serve
 app.mount("/static", StaticFiles(directory="static"), name="static")
