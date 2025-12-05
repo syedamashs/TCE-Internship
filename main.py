@@ -25,12 +25,17 @@ def root():
 
 @app.post("/predict-json")
 async def predict_json(file: UploadFile = File(...)):
+    start_time = time.time()  # Start inference timer
+
     image_bytes = await file.read()
     image = Image.open(BytesIO(image_bytes)).convert("RGB")
 
+    # Run YOLO model
     results = model.predict(image, imgsz=640, conf=0.25, verbose=False)[0]
 
-    
+    end_time = time.time()
+    inference_time = round((end_time - start_time) * 1000, 2)  # in ms
+
     class_count = {}
     total_objects = 0
 
@@ -46,7 +51,8 @@ async def predict_json(file: UploadFile = File(...)):
     return JSONResponse({
         "unique_classes": unique_classes,
         "counts": class_count,
-        "total_objects_detected": total_objects
+        "total_objects_detected": total_objects,
+        "inference_time_ms": inference_time
     })
 
 
