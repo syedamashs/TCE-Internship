@@ -23,9 +23,6 @@ def root():
     return FileResponse("static/index.html")
 
 
-# ---------------------------------------------------------
-# 1️⃣ UPDATED JSON ENDPOINT (no duplicates + counts)
-# ---------------------------------------------------------
 @app.post("/predict-json")
 async def predict_json(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -33,7 +30,7 @@ async def predict_json(file: UploadFile = File(...)):
 
     results = model.predict(image, imgsz=640, conf=0.25, verbose=False)[0]
 
-    # Count occurrences
+    
     class_count = {}
     total_objects = 0
 
@@ -53,9 +50,6 @@ async def predict_json(file: UploadFile = File(...)):
     })
 
 
-# ---------------------------------------------------------
-# 2️⃣ RETURN IMAGE STREAM (unchanged)
-# ---------------------------------------------------------
 @app.post("/predict-image")
 async def predict_image(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -73,9 +67,6 @@ async def predict_image(file: UploadFile = File(...)):
     return StreamingResponse(buf, media_type="image/jpeg")
 
 
-# ---------------------------------------------------------
-# 3️⃣ RETURN IMAGE AS FILE (unchanged)
-# ---------------------------------------------------------
 @app.post("/download-predicted-image", summary="Download Predicted Image")
 async def download_predicted_image(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -90,7 +81,4 @@ async def download_predicted_image(file: UploadFile = File(...)):
     return FileResponse(output_path, media_type="image/jpeg", filename="prediction.jpg")
 
 
-# ---------------------------------------------------------
-# 4️⃣ STATIC UI (unchanged)
-# ---------------------------------------------------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
