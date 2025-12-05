@@ -1,10 +1,10 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, HTMLResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from ultralytics import YOLO
 from io import BytesIO
 from PIL import Image
-import numpy as np
+import time
 
 app = FastAPI(
     title="Indian Food Detection API",
@@ -23,9 +23,9 @@ def root():
     return FileResponse("static/index.html")
 
 
-# -----------------------------
-# 1️⃣ RETURN JSON
-# -----------------------------
+# ---------------------------------------------------------
+# 1️⃣ UPDATED JSON ENDPOINT (no duplicates + counts)
+# ---------------------------------------------------------
 @app.post("/predict-json")
 async def predict_json(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -33,28 +33,29 @@ async def predict_json(file: UploadFile = File(...)):
 
     results = model.predict(image, imgsz=640, conf=0.25, verbose=False)[0]
 
-    detections = []
+    # Count occurrences
+    class_count = {}
+    total_objects = 0
+
     for box in results.boxes:
         cls_id = int(box.cls[0].item())
-        conf = float(box.conf[0].item())
-        x1, y1, x2, y2 = box.xyxy[0].tolist()
+        class_name = CLASS_NAMES.get(cls_id, str(cls_id))
 
-        detections.append({
-            "class_id": cls_id,
-            "class_name": CLASS_NAMES.get(cls_id, str(cls_id)),
-            "confidence": round(conf, 4),
-            "box_xyxy": [round(x1, 2), round(y1, 2), round(x2, 2), round(y2, 2)]
-        })
+        class_count[class_name] = class_count.get(class_name, 0) + 1
+        total_objects += 1
+
+    unique_classes = list(class_count.keys())
 
     return JSONResponse({
-        "num_detections": len(detections),
-        "detections": detections
+        "unique_classes": unique_classes,
+        "counts": class_count,
+        "total_objects_detected": total_objects
     })
 
 
-# -----------------------------
-# 2️⃣ RETURN IMAGE STREAM (downloadable)
-# -----------------------------
+# ---------------------------------------------------------
+# 2️⃣ RETURN IMAGE STREAM (unchanged)
+# ---------------------------------------------------------
 @app.post("/predict-image")
 async def predict_image(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -72,9 +73,9 @@ async def predict_image(file: UploadFile = File(...)):
     return StreamingResponse(buf, media_type="image/jpeg")
 
 
-# -----------------------------
-# 3️⃣ RETURN IMAGE AS FILE — SWAGGER CAN PREVIEW IT
-# -----------------------------
+# ---------------------------------------------------------
+# 3️⃣ RETURN IMAGE AS FILE (unchanged)
+# ---------------------------------------------------------
 @app.post("/download-predicted-image", summary="Download Predicted Image")
 async def download_predicted_image(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -89,7 +90,7 @@ async def download_predicted_image(file: UploadFile = File(...)):
     return FileResponse(output_path, media_type="image/jpeg", filename="prediction.jpg")
 
 
-# -----------------------------
-# 4️⃣ SERVE STATIC UI (index.html)
-# -----------------------------
+# ---------------------------------------------------------
+# 4️⃣ STATIC UI (unchanged)
+# ---------------------------------------------------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
